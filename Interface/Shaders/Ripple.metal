@@ -12,7 +12,8 @@ using namespace metal;
 [[ stitchable ]]
 half4 Ripple(
     float2 position, SwiftUI::Layer layer, float2 origin,
-    float time, float amplitude, float frequency, float decay, float speed
+    float time, float amplitude, float frequency, float decay, float speed,
+    float redIntensity
 ) {
     float distance = length(position - origin);
     float delay = distance / speed;
@@ -25,9 +26,8 @@ half4 Ripple(
     half4 color = layer.sample(newPosition);
     float influence = abs(rippleAmount / amplitude);
     color.rgb += 0.3 * influence * color.a;
-    // Red tint where the wave affects the pixel
-    color.r += 0.55 * influence;
-    color.gb -= 0.22 * influence;
+    // Red tint where the wave affects the pixel (scaled by redIntensity)
+    color.r += redIntensity * 0.95 * influence;
+    color.gb -= redIntensity * 0.92 * influence;
     return color;
 }
-
