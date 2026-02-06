@@ -126,6 +126,9 @@ struct MessageBubbleWithEffects: View {
     var heartScale: CGFloat = 0
     var animationProgress: CGFloat = 0
     
+    // Likes counter: when > 0, shown on top-right of bubble (left side) or top-left (right side)
+    var likesCount: Int = 0
+    
     var body: some View {
         // Full-width container
         HStack {
@@ -168,12 +171,42 @@ struct MessageBubbleWithEffects: View {
                 .containerRelativeFrame(.horizontal) { width, _ in
                     width * maxWidthRatio
                 }
+                .overlay {
+                    if likesCount > 0 {
+                        GeometryReader { geo in
+                            let cornerX: CGFloat = side == .left
+                                ? geo.size.width - padding
+                                : padding
+                            let cornerY: CGFloat = padding
+                            likesCounterLabel
+                                .position(x: cornerX, y: cornerY)
+                        }
+                    }
+                }
             
             if side == .left {
                 Spacer(minLength: 0)
             }
         }
         .frame(maxWidth: .infinity)
+    }
+    
+    private var likesCounterLabel: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "heart.fill")
+                .font(.caption)
+                .foregroundStyle(.red)
+            Text("\(likesCount)")
+                .font(.caption.monospaced())
+                .monospacedDigit()
+                .fontWeight(.medium)
+                .foregroundStyle(.primary)
+                .contentTransition(.numericText(value: Double(likesCount)))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Color.white, in: Capsule())
+        .animation(.default, value: likesCount)
     }
     
     private var innerBubble: some View {
@@ -190,9 +223,9 @@ struct MessageBubbleWithEffects: View {
     /// For right-aligned bubbles (from me): path is on the LEFT side (left bottom to left top).
     private func cornerPath(in size: CGSize, curvature: CGFloat, side: MessageSide) -> Path {
         let horizontalInset: CGFloat = 16
-        let w = size.width
-        let h = size.height
-        let maxCurveOffset = min(120, (w - horizontalInset * 2) * 0.5)
+        let width = size.width
+        let height = size.height
+        let maxCurveOffset = min(120, (width - horizontalInset * 2) * 0.5)
         
         let start: CGPoint
         let end: CGPoint
@@ -201,16 +234,16 @@ struct MessageBubbleWithEffects: View {
         switch side {
         case .left:
             // Curve on the RIGHT side of the bubble
-            start = CGPoint(x: w - horizontalInset, y: h)
-            end = CGPoint(x: w - horizontalInset, y: 0)
-            let controlX = w - horizontalInset - (curvature * maxCurveOffset)
-            control = CGPoint(x: controlX, y: h / 2)
+            start = CGPoint(x: width - horizontalInset, y: height)
+            end = CGPoint(x: width - horizontalInset, y: 0)
+            let controlX = width - horizontalInset + (curvature * maxCurveOffset)
+            control = CGPoint(x: controlX, y: height / 2)
         case .right:
             // Curve on the LEFT side of the bubble
-            start = CGPoint(x: horizontalInset, y: h)
+            start = CGPoint(x: horizontalInset, y: height)
             end = CGPoint(x: horizontalInset, y: 0)
-            let controlX = horizontalInset + (curvature * maxCurveOffset)
-            control = CGPoint(x: controlX, y: h / 2)
+            let controlX = horizontalInset - (curvature * maxCurveOffset)
+            control = CGPoint(x: controlX, y: height / 2)
         }
         
         var path = Path()
@@ -272,6 +305,10 @@ struct PathAnimationDemo: View {
     @State private var rippleDuration: Double = 3
     @State private var rippleRedIntensity: Double = 0.3
 
+    // Likes (double-tap) counter; only incremented when path animation completes after double-tap
+    @State private var likesCount: Int = 0
+    @State private var lastAnimationWasFromDoubleTap: Bool = false
+
     var body: some View {
         VStack(spacing: 0) {
             // 1. Demo container: full width, all available height, no bg or border
@@ -290,13 +327,15 @@ struct PathAnimationDemo: View {
                     curvature: curvature,
                     showHeart: showHeart,
                     heartScale: heartScale,
-                    animationProgress: animationProgress
+                    animationProgress: animationProgress,
+                    likesCount: likesCount
                 )
                 .padding(.horizontal)
                 .contentShape(Rectangle())
                 .onTapGesture(count: 2) { location in
                     rippleOrigin = location
                     rippleCounter += 1
+                    lastAnimationWasFromDoubleTap = true
                     startAnimation()
                 }
             }
@@ -426,6 +465,10 @@ struct PathAnimationDemo: View {
                 animationTimer = nil
                 showHeart = false
                 isAnimating = false
+                if lastAnimationWasFromDoubleTap {
+                    likesCount += 1
+                    lastAnimationWasFromDoubleTap = false
+                }
                 return
             }
 
