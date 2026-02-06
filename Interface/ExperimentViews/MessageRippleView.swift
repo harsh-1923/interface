@@ -42,7 +42,7 @@ struct MessageRippleView: View {
     
     var body: some View {
         ZStack {
-            ScrollView {
+
                 VStack(spacing: 20) {
                     // Shader controls — compact grid
                     VStack(alignment: .leading, spacing: 10) {
@@ -75,23 +75,40 @@ struct MessageRippleView: View {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(.ultraThinMaterial)
                     )
+                    
+                    ZStack {
+                        HStack{
+                            Text(contentText)
+                        }
+                        .padding(14)
+                        .background(Color.pink.opacity(0.3))
+
+                    }
+                    .contentShape(Rectangle())
+                    .modifier(RippleEffect(at: origin, trigger: counter, duration: duration, amplitude: amplitude, frequency: frequency, decay: decay, speed: speed, redIntensity: redIntensity))
+                    .cornerRadius(24)
+                    .onTapGesture(count: 2){ location in
+                        origin = location
+                        counter *= -1
+                    }
+                    
 
                     // Tap target
-                    Text(contentText)
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 18)
-                        .foregroundStyle(Color(.label))
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(.secondarySystemGroupedBackground))
-                        )
-                        .modifier(RippleEffect(at: origin, trigger: counter, duration: duration, amplitude: amplitude, frequency: frequency, decay: decay, speed: speed, redIntensity: redIntensity))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .shadow(color: Color.primary.opacity(0.08), radius: 10, x: 0, y: 4)
-                        .onTapGesture(count: 2) { location in
-                            origin = location
-                            counter += 1
-                        }
+//                    Text(contentText)
+//                        .padding(.horizontal, 28)
+//                        .padding(.vertical, 18)
+//                        .foregroundStyle(Color(.label))
+//                        .background(
+//                            RoundedRectangle(cornerRadius: 16)
+//                                .fill(Color(.secondarySystemGroupedBackground))
+//                        )
+//                        .modifier(RippleEffect(at: origin, trigger: counter, duration: duration, amplitude: amplitude, frequency: frequency, decay: decay, speed: speed, redIntensity: redIntensity))
+//                        .clipShape(RoundedRectangle(cornerRadius: 16))
+//                        .shadow(color: Color.primary.opacity(0.08), radius: 10, x: 0, y: 4)
+//                        .onTapGesture(count: 2) { location in
+//                            origin = location
+//                            counter += 1
+//                        }
 
                     // Edit text content
                     VStack(alignment: .leading, spacing: 8) {
@@ -115,10 +132,11 @@ struct MessageRippleView: View {
                 .padding(24)
                 .frame(maxWidth: .infinity)
                 .background(Color(.systemGroupedBackground))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(.systemGroupedBackground))
-        }
+//            }
+//            .frame(maxWidth: .infinity, maxHeight: .infinity)
+//            .background(Color(.systemGroupedBackground))
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
     }
 }
 

@@ -34,9 +34,14 @@ struct ContentView: View {
 private struct HomeTab: View {
     var body: some View {
         NavigationStack {
-            Text("Home")
-                .navigationTitle("Home")
+            List {
+                NavigationLink("Message Ripple") {
+                    MessageComposerView()
+                }
+            }
+            .navigationTitle("Home")
         }
+        
     }
 }
 
