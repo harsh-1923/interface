@@ -28,29 +28,26 @@ private struct FlyingHeart: Identifiable {
 
 struct MessageComposer: View {
     let text: String
-    let initialLikeCount: Int
+    @Binding var likeCount: Int
+
+    // Ripple effect (double-tap)
+    var amplitude: Double = 12
+    var frequency: Double = 15
+    var decay: Double = 8
+    var speed: Double = 1200
+    var duration: Double = 3
+    var redIntensity: Double = 0.01
+
+    // Heart path animation
+    var heartAnimationDuration: Double = 0.6
+    var heartScaleInDuration: Double = 0.15
 
     @State private var origin: CGPoint = .zero
-    @State private var likeCount: Int = 0
     @State private var counter: Int = 0
-    @State private var amplitude: Double = 12
-    @State private var frequency: Double = 15
-    @State private var decay: Double = 8
-    @State private var speed: Double = 1200
-    @State private var duration: Double = 3
-    @State private var redIntensity: Double = 0.01
 
     // Heart path animation state — supports multiple simultaneous hearts
     @State private var flyingHearts: [FlyingHeart] = []
     @State private var activeTimers: [UUID: Timer] = [:]
-    private let heartAnimationDuration: Double = 0.6
-    private let scaleInDuration: Double = 0.15
-
-    init(text: String, initialLikeCount: Int = 0) {
-        self.text = text
-        self.initialLikeCount = initialLikeCount
-        _likeCount = State(initialValue: initialLikeCount)
-    }
 
     var body: some View {
         HStack {
@@ -153,7 +150,7 @@ struct MessageComposer: View {
 
         let startTime = Date()
         let frameRate: TimeInterval = 1.0 / 60.0
-        let totalDuration = scaleInDuration + heartAnimationDuration
+        let totalDuration = heartScaleInDuration + heartAnimationDuration
         let heartID = heart.id
 
         let timer = Timer.scheduledTimer(
@@ -166,7 +163,9 @@ struct MessageComposer: View {
                 timer.invalidate()
                 activeTimers.removeValue(forKey: heartID)
                 flyingHearts.removeAll { $0.id == heartID }
-                likeCount += 1
+                DispatchQueue.main.async {
+                    likeCount += 1
+                }
                 return
             }
 
@@ -177,15 +176,15 @@ struct MessageComposer: View {
                 return
             }
 
-            if elapsed < scaleInDuration {
+            if elapsed < heartScaleInDuration {
                 // Phase 1: scale the heart in at the start position
-                let t = elapsed / scaleInDuration
+                let t = elapsed / heartScaleInDuration
                 flyingHearts[idx].scale = CGFloat(t)
                 flyingHearts[idx].progress = 0
             } else {
                 // Phase 2: move along the path bottom → top
                 flyingHearts[idx].scale = 1
-                let linearProgress = (elapsed - scaleInDuration)
+                let linearProgress = (elapsed - heartScaleInDuration)
                     / heartAnimationDuration
                 flyingHearts[idx].progress = easeInOut(linearProgress)
             }
@@ -231,6 +230,6 @@ private struct LikeCountPill: View {
 #Preview {
     MessageComposer(
         text: "Hello! This is a reusable message composer component.",
-        initialLikeCount: 3
+        likeCount: .constant(3)
     )
 }
