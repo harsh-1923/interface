@@ -62,6 +62,9 @@ private struct ExperimentsTab: View {
                 NavigationLink("Pinch Trigger") {
                     PinchTriggerView()
                 }
+                NavigationLink("Summariser") {
+                    SummaryPinchView()
+                }
             }
             .navigationTitle("Experiments")
         }
