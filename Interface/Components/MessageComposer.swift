@@ -22,6 +22,13 @@ private struct FlyingHeart: Identifiable {
     let id: UUID
     var scale: CGFloat = 0
     var progress: CGFloat = 0
+    var opacity: Double = 1.0
+    /// Whether the timer has started driving this heart; hidden until true
+    var isActive: Bool = false
+    /// Whether this heart should trigger the like count increment
+    var shouldIncrementLike: Bool = false
+    /// Whether the like increment has already fired for this heart
+    var didIncrementLike: Bool = false
 }
 
 // MARK: - MessageComposer Component
@@ -41,6 +48,7 @@ struct MessageComposer: View {
     // Heart path animation
     var heartAnimationDuration: Double = 0.6
     var heartScaleInDuration: Double = 0.15
+    var heartStaggerDelay: Double = 0.12
 
     @State private var origin: CGPoint = .zero
     @State private var counter: Int = 0
@@ -78,17 +86,24 @@ struct MessageComposer: View {
                     )
                     .overlay {
                         GeometryReader { geometry in
-                            let path = straightPath(in: geometry.size)
+                            let size = geometry.size
+                            let path = straightPath(in: size)
 
                             ForEach(flyingHearts) { heart in
+                                let fadeOut = heart.progress > 0.75
+                                    ? 1.0 - ((heart.progress - 0.75) / 0.25)
+                                    : 1.0
+
                                 Image(systemName: "heart.fill")
                                     .font(.title2)
                                     .foregroundStyle(.red)
-                                    .scaleEffect(heart.scale)
+                                    .opacity(heart.isActive ? heart.opacity * fadeOut : 0)
+                                    .scaleEffect(heart.scale * fadeOut)
                                     .position(
                                         positionOnPath(
                                             path: path,
-                                            progress: heart.progress
+                                            progress: heart.progress,
+                                            in: size
                                         )
                                     )
                             }
@@ -100,11 +115,11 @@ struct MessageComposer: View {
                         spawnHeartAnimation()
                     }
 
-                if(likeCount > 0) {
+                if likeCount > 0 {
                     LikeCountPill(count: $likeCount)
                         .offset(x: 8, y: -18)
                 }
-            }
+            } 
 
             Spacer()
         }
@@ -126,15 +141,19 @@ struct MessageComposer: View {
         return path
     }
 
+    /// The start point of the flight path (bottom-right of the bubble)
+    private func pathStartPoint(in size: CGSize) -> CGPoint {
+        let inset: CGFloat = 16
+        return CGPoint(x: size.width - inset, y: size.height)
+    }
+
     /// Get the position at a given progress (0...1) along a path
-    private func positionOnPath(path: Path, progress: CGFloat) -> CGPoint {
+    private func positionOnPath(path: Path, progress: CGFloat, in size: CGSize) -> CGPoint {
         let t = max(0, min(1, progress))
-        guard t > 0 else {
-            return path.trimmedPath(from: 0, to: 0.001).currentPoint
-                ?? path.currentPoint ?? .zero
-        }
+        let start = pathStartPoint(in: size)
+        guard t > 0 else { return start }
         let trimmed = path.trimmedPath(from: 0, to: t)
-        return trimmed.currentPoint ?? path.currentPoint ?? .zero
+        return trimmed.currentPoint ?? start
     }
 
     // MARK: - Animation
@@ -143,9 +162,26 @@ struct MessageComposer: View {
         CGFloat(t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2)
     }
 
-    /// Spawn a new independent heart animation — multiple can run at once
+    /// Spawn three staggered hearts with reducing opacities (100%, 70%, 50%)
     private func spawnHeartAnimation() {
-        let heart = FlyingHeart(id: UUID())
+        let opacities: [Double] = [1.0, 0.7, 0.5]
+
+        for index in opacities.indices {
+            let delay = Double(index) * heartStaggerDelay
+            let opacity = opacities[index]
+            let isFirst = index == 0
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                spawnSingleHeart(opacity: opacity, incrementLike: isFirst)
+            }
+        }
+    }
+
+    /// Spawn a single heart with the given opacity along the flight path
+    private func spawnSingleHeart(opacity: Double, incrementLike: Bool) {
+        var heart = FlyingHeart(id: UUID())
+        heart.opacity = opacity
+        heart.shouldIncrementLike = incrementLike
         flyingHearts.append(heart)
 
         let startTime = Date()
@@ -163,9 +199,6 @@ struct MessageComposer: View {
                 timer.invalidate()
                 activeTimers.removeValue(forKey: heartID)
                 flyingHearts.removeAll { $0.id == heartID }
-                DispatchQueue.main.async {
-                    likeCount += 1
-                }
                 return
             }
 
@@ -174,6 +207,11 @@ struct MessageComposer: View {
                 timer.invalidate()
                 activeTimers.removeValue(forKey: heartID)
                 return
+            }
+
+            // Mark active on first tick so the view becomes visible
+            if !flyingHearts[idx].isActive {
+                flyingHearts[idx].isActive = true
             }
 
             if elapsed < heartScaleInDuration {
@@ -187,6 +225,16 @@ struct MessageComposer: View {
                 let linearProgress = (elapsed - heartScaleInDuration)
                     / heartAnimationDuration
                 flyingHearts[idx].progress = easeInOut(linearProgress)
+
+                // Increment like count as soon as fade-out begins
+                if flyingHearts[idx].progress > 0.75,
+                   flyingHearts[idx].shouldIncrementLike,
+                   !flyingHearts[idx].didIncrementLike {
+                    flyingHearts[idx].didIncrementLike = true
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                        likeCount += 1
+                    }
+                }
             }
         }
 
@@ -224,7 +272,16 @@ private struct LikeCountPill: View {
                 .stroke(Color.white, lineWidth: 3)
         )
         .animation(.default, value: count)
-    }
+        .transition(
+            .asymmetric(
+                insertion:
+                        .scale(scale: 0, anchor: .bottom)
+                        .combined(with: .opacity),
+                removal: .scale(scale: 0, anchor: .bottom)
+                    .combined(with: .opacity)
+            )
+        )
+    } 
 }
 
 #Preview {
