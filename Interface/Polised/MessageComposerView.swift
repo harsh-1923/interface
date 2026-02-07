@@ -10,11 +10,9 @@ import SwiftUI
 struct MessageComposerView: View {
     @State private var likeCount: Int = 0
     @State private var showMessageSheet: Bool = false
+    @State private var messageSide: MessageComposerWrapper.Side = .left
     @State private var message: String = """
-    This is a message bubble. The height of this bubble should grow
-    naturally based on the text length, without any fixed height.
-    This is a message bubble. The height of this bubble should grow
-    naturally based on the text length, without any fixed height.
+    We’re facing persistent payment failures from several customers, who are encountering transaction timeouts and vague error messages. This is hurting our sales performance. Can the payment team look into this urgently? Much appreciated!
     """
 
     // Ripple effect
@@ -36,11 +34,12 @@ struct MessageComposerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Top: flexible area with MessageComposer centered
+            // Top: flexible area with MessageComposerWrapper centered
             VStack {
-                MessageComposer(
+                MessageComposerWrapper(
                     text: message,
                     likeCount: $likeCount,
+                    side: messageSide,
                     amplitude: amplitude,
                     frequency: frequency,
                     decay: decay,
@@ -52,6 +51,34 @@ struct MessageComposerView: View {
                 )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            // Alignment controls
+            HStack(spacing: 12) {
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        messageSide = .left
+                    }
+                } label: {
+                    Label("Left", systemImage: "arrow.left")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                }
+                .glassEffect(.regular)
+
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        messageSide = .right
+                    }
+                } label: {
+                    Label("Right", systemImage: "arrow.right")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                }
+                .glassEffect(.regular)
+            }
+            .padding(.bottom, 12)
 
             // Bottom: effect controls grid
             LazyVGrid(columns: gridColumns, spacing: 8) {

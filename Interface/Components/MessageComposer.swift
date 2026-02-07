@@ -58,72 +58,67 @@ struct MessageComposer: View {
     @State private var activeTimers: [UUID: Timer] = [:]
 
     var body: some View {
-        HStack {
-            ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .topTrailing) {
 
-                // Message content + bubble
-                Text(text)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(RoundedRectangle(cornerRadius: 16))
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.messageBubbleBg)
+            // Message content + bubble
+            Text(text)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(RoundedRectangle(cornerRadius: 16))
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.messageBubbleBg)
+                )
+                .modifier(
+                    RippleEffect(
+                        at: origin,
+                        trigger: counter,
+                        duration: duration,
+                        amplitude: amplitude,
+                        frequency: frequency,
+                        decay: decay,
+                        speed: speed,
+                        redIntensity: redIntensity
                     )
-                    .modifier(
-                        RippleEffect(
-                            at: origin,
-                            trigger: counter,
-                            duration: duration,
-                            amplitude: amplitude,
-                            frequency: frequency,
-                            decay: decay,
-                            speed: speed,
-                            redIntensity: redIntensity
-                        )
-                    )
-                    .overlay {
-                        GeometryReader { geometry in
-                            let size = geometry.size
-                            let path = straightPath(in: size)
+                )
+                .overlay {
+                    GeometryReader { geometry in
+                        let size = geometry.size
+                        let path = straightPath(in: size)
 
-                            ForEach(flyingHearts) { heart in
-                                let fadeOut = heart.progress > 0.75
-                                    ? 1.0 - ((heart.progress - 0.75) / 0.25)
-                                    : 1.0
+                        ForEach(flyingHearts) { heart in
+                            let fadeOut = heart.progress > 0.75
+                                ? 1.0 - ((heart.progress - 0.75) / 0.25)
+                                : 1.0
 
-                                Image(systemName: "heart.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(.red)
-                                    .opacity(heart.isActive ? heart.opacity * fadeOut : 0)
-                                    .scaleEffect(heart.scale * fadeOut)
-                                    .position(
-                                        positionOnPath(
-                                            path: path,
-                                            progress: heart.progress,
-                                            in: size
-                                        )
+                            Image(systemName: "heart.fill")
+                                .font(.title2)
+                                .foregroundStyle(.red)
+                                .opacity(heart.isActive ? heart.opacity * fadeOut : 0)
+                                .scaleEffect(heart.scale * fadeOut)
+                                .position(
+                                    positionOnPath(
+                                        path: path,
+                                        progress: heart.progress,
+                                        in: size
                                     )
-                            }
+                                )
                         }
                     }
-                    .onTapGesture(count: 2) { location in
-                        origin = location
-                        counter -= 1
-                        spawnHeartAnimation()
-                    }
-
-                if likeCount > 0 {
-                    LikeCountPill(count: $likeCount)
-                        .offset(x: 8, y: -18)
                 }
-            } 
+                .onTapGesture(count: 2) { location in
+                    origin = location
+                    counter -= 1
+                    spawnHeartAnimation()
+                }
 
-            Spacer()
+            if likeCount > 0 {
+                LikeCountPill(count: $likeCount)
+                    .offset(x: 8, y: -18)
+            }
         }
-        .padding(.horizontal)
         .onDisappear {
             for timer in activeTimers.values { timer.invalidate() }
             activeTimers.removeAll()
@@ -234,6 +229,7 @@ struct MessageComposer: View {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                         likeCount += 1
                     }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }
             }
         }
@@ -289,4 +285,5 @@ private struct LikeCountPill: View {
         text: "Hello! This is a reusable message composer component.",
         likeCount: .constant(3)
     )
+    .padding(.horizontal)
 }
